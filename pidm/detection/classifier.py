@@ -1,0 +1,188 @@
+"""Layer 2 — Transformer Classifier (DeBERTa-v3 / DistilBERT)."""
+from __future__ import annotations
+
+from typing import Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
+import torch
+from datasets import Dataset as HFDataset
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from torch.utils.data import Dataset as TorchDataset
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    EarlyStoppingCallback,
+    Trainer,
+    TrainingArguments,
+)
+
+from pidm.config import CONFIG, logger
+
+
+class _TokenizedDataset(TorchDataset):
+    def __init__(self, encodings, labels):
+        self.encodings = encodings
+        self.labels    = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
+        item["labels"] = torch.tensor(self.labels[idx])
+        return item
+
+
+def _mixed_precision_kwargs() -> dict:
+    """
+    DeBERTa-v2/v3's disentangled-attention layers (custom XSoftmax /
+    StableDropout autograd functions) are known to break fp16 gradient
+    scaling ("Attempting to unscale FP16 gradients"). bf16 needs no
+    gradient scaler at all and Ampere+ GPUs (RTX 3070 included) support it
+    natively, so prefer bf16 on CUDA and only fall back to fp16 off-GPU
+    hardware that lacks it.
+    """
+    if CONFIG.device != "cuda":
+        return {"fp16": False, "bf16": False}
+    if torch.cuda.is_bf16_supported():
+        return {"fp16": False, "bf16": True}
+    return {"fp16": True, "bf16": False}
+
+
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    preds = np.argmax(logits, axis=-1)
+    p, r, f1, _ = precision_recall_fscore_support(labels, preds, average="binary")
+    acc = accuracy_score(labels, preds)
+    return {"accuracy": acc, "f1": f1, "precision": p, "recall": r}
+
+
+class InjectionClassifier:
+    """
+    Fine-tunes DeBERTa-v3 (or DistilBERT on CPU) on the labeled
+    inter-agent message dataset and provides inference.
+    """
+
+    def __init__(self, model_name: str = None):
+        self.model_name = model_name or CONFIG.classifier_model
+        self.tokenizer   = None
+        self.model       = None
+        self._trained    = False
+
+    def _tokenize(self, texts: List[str]):
+        return self.tokenizer(
+            texts,
+            truncation=True,
+            padding=True,
+            max_length=CONFIG.max_length,
+        )
+
+    def train(self, df: pd.DataFrame, save_path: str = None,
+              num_epochs: int = None) -> Dict:
+        """Fine-tune on the training split of df. Returns final eval metrics."""
+        save_path = save_path or CONFIG.model_save_path
+        logger.info(f"Loading tokenizer: {self.model_name}")
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model     = AutoModelForSequenceClassification.from_pretrained(
+            self.model_name, num_labels=2
+        )
+
+        n        = len(df)
+        n_train  = int(n * CONFIG.train_ratio)
+        n_val    = int(n * CONFIG.val_ratio)
+        train_df = df.iloc[:n_train]
+        val_df   = df.iloc[n_train: n_train + n_val]
+
+        train_enc = self._tokenize(train_df["content"].tolist())
+        val_enc   = self._tokenize(val_df["content"].tolist())
+
+        train_ds = _TokenizedDataset(train_enc, train_df["label"].tolist())
+        val_ds   = _TokenizedDataset(val_enc,   val_df["label"].tolist())
+
+        # transformers renames/removes TrainingArguments fields across major
+        # releases (evaluation_strategy -> eval_strategy, logging_dir dropped,
+        # etc). Rather than chasing each rename, build the desired kwargs and
+        # keep only the ones the installed version actually accepts.
+        desired_args = {
+            "output_dir":                   save_path,
+            "num_train_epochs":             num_epochs or CONFIG.num_epochs,
+            "per_device_train_batch_size":  CONFIG.batch_size,
+            "per_device_eval_batch_size":   CONFIG.batch_size,
+            "gradient_accumulation_steps":  CONFIG.gradient_accumulation_steps,
+            "learning_rate":                CONFIG.learning_rate,
+            "weight_decay":                 CONFIG.weight_decay,
+            "warmup_steps":                 CONFIG.warmup_steps,
+            "eval_strategy":                "epoch",
+            "evaluation_strategy":          "epoch",   # older transformers name; filtered below
+            "save_strategy":                "epoch",
+            "load_best_model_at_end":       True,
+            "metric_for_best_model":        "f1",
+            "logging_dir":                  f"{save_path}/logs",
+            "logging_steps":                50,
+            "report_to":                    "none",
+            "save_total_limit":             1,
+            **_mixed_precision_kwargs(),
+        }
+        import inspect
+        accepted = set(inspect.signature(TrainingArguments.__init__).parameters)
+        filtered_args = {k: v for k, v in desired_args.items() if k in accepted}
+        dropped = set(desired_args) - set(filtered_args)
+        if dropped:
+            logger.info(f"TrainingArguments: this transformers version doesn't accept "
+                        f"{sorted(dropped)} — skipping.")
+
+        args = TrainingArguments(**filtered_args)
+
+        # `tokenizer` was renamed to `processing_class` in newer transformers.
+        desired_trainer_kwargs = {
+            "model":           self.model,
+            "args":            args,
+            "train_dataset":   train_ds,
+            "eval_dataset":    val_ds,
+            "tokenizer":         self.tokenizer,   # older transformers name
+            "processing_class":  self.tokenizer,   # newer transformers name
+            "data_collator":   DataCollatorWithPadding(self.tokenizer),
+            "compute_metrics": compute_metrics,
+            "callbacks":       [EarlyStoppingCallback(early_stopping_patience=2)],
+        }
+        trainer_accepted = set(inspect.signature(Trainer.__init__).parameters)
+        trainer = Trainer(**{k: v for k, v in desired_trainer_kwargs.items() if k in trainer_accepted})
+
+        logger.info(f"Starting classifier training on {n_train:,} rows "
+                    f"(batch={CONFIG.batch_size} x grad_accum={CONFIG.gradient_accumulation_steps}) ...")
+        trainer.train()
+        metrics = trainer.evaluate()
+        trainer.save_model(save_path)
+        self.tokenizer.save_pretrained(save_path)
+        self._trained = True
+        logger.info(f"Classifier saved -> {save_path}")
+        return metrics
+
+    def load(self, path: str = None) -> None:
+        path = path or CONFIG.model_save_path
+        self.tokenizer = AutoTokenizer.from_pretrained(path)
+        self.model     = AutoModelForSequenceClassification.from_pretrained(path)
+        self.model.to(CONFIG.device)
+        self.model.eval()
+        self._trained = True
+        logger.info(f"Classifier loaded from {path}")
+
+    def predict(self, text: str) -> Tuple[int, float]:
+        """Returns (label, probability_of_injection)."""
+        if not self._trained:
+            raise RuntimeError("Call .train() or .load() first.")
+        inputs = self.tokenizer(
+            text, return_tensors="pt",
+            truncation=True, max_length=CONFIG.max_length, padding=True,
+        ).to(CONFIG.device)
+        with torch.no_grad():
+            logits = self.model(**inputs).logits
+        probs = torch.softmax(logits, dim=-1)[0]
+        score = float(probs[1])
+        label = 1 if score >= CONFIG.classifier_threshold else 0
+        return label, score
+
+    def predict_batch(self, texts: List[str]) -> List[Tuple[int, float]]:
+        return [self.predict(t) for t in texts]

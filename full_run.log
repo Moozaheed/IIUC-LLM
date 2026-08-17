@@ -1,0 +1,51 @@
+C:\Users\raiha\OneDrive\Documents\Mozahed\IIUC LLM\local_runner.py:13: SyntaxWarning: "\P" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\P"? A raw string is also an option.
+  python local_runner.py --work-dir D:\PIDM_work     # force where heavy artifacts land
+2026-08-17 21:13:53,890 [INFO] GPU VRAM=8.0GB — using DeBERTa-v3-base, batch_size=16 (effective 32 via grad_accum=2), fp16.
+2026-08-17 21:13:53,891 [INFO] PIDMConfig ready | device=cuda | model=microsoft/deberta-v3-base
+2026-08-17 21:14:42,767 [INFO] [build_dataset] target=40,000 | template base=6,500 (paraphrase=True) | remainder from trace simulator
+2026-08-17 21:14:42,767 [INFO] Generating dataset — target size: 6500
+2026-08-17 21:14:42,867 [INFO] Paraphrasing 6,500 rows x 3 variants each ...
+2026-08-17 21:14:42,872 [INFO] Loading paraphrase model: humarin/chatgpt_paraphraser_on_T5_base
+2026-08-17 21:14:43,436 [INFO] HTTP Request: GET https://huggingface.co/api/agent-harnesses "HTTP/1.1 200 OK"
+2026-08-17 21:14:43,688 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-17 21:14:43,706 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/config.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:43,730 [INFO] HTTP Request: GET https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/config.json "HTTP/1.1 200 OK"
+G:\PIDM_work\.venv\Lib\site-packages\huggingface_hub\file_download.py:141: UserWarning: `huggingface_hub` cache-system uses symlinks by default to efficiently store duplicated files but your machine does not support them in C:\Users\raiha\OneDrive\Documents\Mozahed\IIUC LLM\.pidm_work\hf_cache\hub\models--humarin--chatgpt_paraphraser_on_T5_base. Caching files will still work but in a degraded version that might require more space on your disk. This warning can be disabled by setting the `HF_HUB_DISABLE_SYMLINKS_WARNING` environment variable. For more details, see https://huggingface.co/docs/huggingface_hub/how-to-cache#limitations.
+To support symlinks on Windows, you either need to activate Developer Mode or to run Python as an administrator. In order to activate developer mode, see this article: https://docs.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development
+  warnings.warn(message)
+2026-08-17 21:14:44,050 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-17 21:14:44,068 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:44,087 [INFO] HTTP Request: GET https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:44,357 [INFO] HTTP Request: GET https://huggingface.co/api/models/humarin/chatgpt_paraphraser_on_T5_base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-08-17 21:14:44,631 [INFO] HTTP Request: GET https://huggingface.co/api/models/humarin/chatgpt_paraphraser_on_T5_base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-08-17 21:14:44,897 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/spiece.model "HTTP/1.1 302 Found"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-08-17 21:14:44,897 [WARNING] Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-08-17 21:14:47,644 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/tokenizer.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-17 21:14:47,665 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/tokenizer.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:47,686 [INFO] HTTP Request: GET https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/tokenizer.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:48,005 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/added_tokens.json "HTTP/1.1 404 Not Found"
+2026-08-17 21:14:48,258 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/special_tokens_map.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-17 21:14:48,273 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/special_tokens_map.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:48,293 [INFO] HTTP Request: GET https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/special_tokens_map.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:48,576 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/chat_template.jinja "HTTP/1.1 404 Not Found"
+2026-08-17 21:14:49,047 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-17 21:14:49,064 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/config.json "HTTP/1.1 200 OK"
+2026-08-17 21:14:49,367 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+[local_runner] Work dir: C:\Users\raiha\OneDrive\Documents\Mozahed\IIUC LLM\.pidm_work
+
+======================================================================
+  PIDM — Prompt Injection Detection Middleware
+  International Islamic University Chittagong (IIUC)
+======================================================================
+
+[1/8] Building dataset (synthetic + paraphrase + traces + real-world) ...
+Loading weights:   0%|          | 0/257 [00:00<?, ?it/s]Loading weights: 100%|##########| 257/257 [00:00<00:00, 5934.40it/s]
+2026-08-17 21:16:21,269 [INFO] HTTP Request: HEAD https://huggingface.co/humarin/chatgpt_paraphraser_on_T5_base/resolve/main/generation_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-08-17 21:16:21,292 [INFO] HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/generation_config.json "HTTP/1.1 200 OK"
+2026-08-17 21:16:21,314 [INFO] HTTP Request: GET https://huggingface.co/api/resolve-cache/models/humarin/chatgpt_paraphraser_on_T5_base/d3ab1136f6c3d3d2f8031d07551d2054a5372a50/generation_config.json "HTTP/1.1 200 OK"
+2026-08-17 21:27:09,717 [INFO]   ... paraphrased 500/6,500 rows
+2026-08-17 21:36:37,594 [INFO]   ... paraphrased 1,000/6,500 rows
+2026-08-17 21:45:32,973 [INFO]   ... paraphrased 1,500/6,500 rows
+2026-08-17 23:36:39,157 [INFO]   ... paraphrased 2,000/6,500 rows
+2026-08-17 23:46:39,888 [INFO]   ... paraphrased 2,500/6,500 rows

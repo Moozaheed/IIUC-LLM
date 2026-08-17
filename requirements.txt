@@ -1,0 +1,13 @@
+torch>=2.9
+transformers>=4.44
+datasets
+sentence-transformers
+networkx
+scikit-learn
+pandas
+matplotlib
+seaborn
+gradio
+accelerate
+sentencepiece
+protobuf
