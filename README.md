@@ -8,15 +8,6 @@
 
 ---
 
-## Authors
-
-| Name | Student ID |
-|---|---|
-| Md. Ashikul Islam | C213096R |
-| Abdul Aowal Manik | 213100 |
-| Shoabur Rahaman Durjoy | C221141R |
-
----
 
 ## Overview
 
