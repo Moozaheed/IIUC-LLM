@@ -1,0 +1,18 @@
+flowchart TD
+    A([Trained PIDM\n+ Baselines]) --> B[Run on Held-out\nReal-World Test Set]
+    B --> C[Collect Predictions\nper system]
+    C --> D[Standard Metrics\nF1, Precision, Recall, FPR]
+    C --> E[Bootstrap CI\n1000 resamples\n95% confidence interval\nfor F1]
+    C --> F[McNemar Test\nPIDM vs each baseline\nchi-squared p-value]
+    D --> G[Ablation Study\nRBF only\nRBF+CLS\nRBF+CLS+SID\nFull PIDM]
+    D --> H[Baseline Comparison\nB0 No Protection\nB1 Keyword Filter\nB2 TF-IDF+LR\nB3 RBF Only\nB4 Classifier Only\nB5 Full PIDM\nB6 ProtectAI Zero-shot]
+    E --> I{Significant?\np < 0.05}
+    F --> I
+    I -->|Yes| J([PIDM improvement\nstatistically confirmed])
+    I -->|No| K([Improvement not\nsignificant — investigate])
+    G --> L[Plot ablation\nbar chart]
+    H --> M[Plot baseline\ncomparison + radar]
+
+    style A fill:#4a90d9,color:#fff
+    style J fill:#228b22,color:#fff
+    style K fill:#e74c3c,color:#fff

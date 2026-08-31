@@ -1,0 +1,17 @@
+flowchart TD
+    A([Start]) --> B[Synthetic Generator\nAADG — 6 attack categories\n+ benign templates]
+    B --> C[T5 Paraphraser\nLocal paraphrase augmentation\nbreaks template overfitting]
+    C --> D[Real Data Loader\ndeepset/prompt-injections\nmarkusbayer/prompt-injection\nAdvBench harmful behaviors]
+    D --> E[Trace Simulator\nMulti-turn multi-topology\nconversation traces]
+    E --> F{Merge and\nDeduplicate}
+    F --> G[Train Split\n~36,000 rows\nSynthetic + Paraphrased\n+ Traces]
+    F --> H[Test Split\n~4,000 rows\n100% Real-World Data\nNever seen in training]
+    G --> I[DeBERTa-v3 Fine-tuning]
+    H --> J[Held-out Evaluation]
+    I --> K([Trained PIDM\nClassifier])
+    J --> K
+
+    style A fill:#4a90d9,color:#fff
+    style D fill:#e74c3c,color:#fff
+    style H fill:#e74c3c,color:#fff
+    style K fill:#228b22,color:#fff

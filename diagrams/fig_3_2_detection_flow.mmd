@@ -1,0 +1,34 @@
+flowchart LR
+    MSG([Message\nIn]) --> RBF
+
+    subgraph L1[Layer 1 — Rule-Based Filter]
+        RBF[Regex Patterns\n24 keywords\nBase64 detect]
+    end
+
+    subgraph L2[Layer 2 — DeBERTa-v3 Classifier]
+        CLS[Fine-tuned\nDeBERTa-v3\nSoftmax logit]
+    end
+
+    subgraph L3[Layer 3 — Semantic Intent Drift]
+        SID[Cosine distance\nfrom pipeline\nintent embedding]
+    end
+
+    subgraph L4[Layer 4 — Graph-Aware Cascade Detector]
+        GCPD[Suspicion x\nReachable agents\nfraction]
+    end
+
+    subgraph ENS[Weighted Ensemble]
+        W[rbf=0.20\ncls=0.45\nsid=0.20\ngcpd=0.15]
+    end
+
+    L1 --> CLS
+    L2 --> SID
+    L3 --> GCPD
+    L4 --> W
+    W --> DEC{score\n>= 0.50?}
+    DEC -- Yes --> QUA([QUARANTINE])
+    DEC -- No --> PAS([PASS])
+
+    style QUA fill:#cc0000,color:#fff
+    style PAS fill:#228b22,color:#fff
+    style MSG fill:#4a90d9,color:#fff

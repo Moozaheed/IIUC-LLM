@@ -1,0 +1,25 @@
+flowchart TD
+    A([Inter-Agent Message]) --> B[Rule-Based Filter\nRBF\n~2ms]
+    B -->|score| E
+    B -->|blocked| Q
+    B --> C
+    C[DeBERTa-v3 Classifier\n~45ms] -->|score| E
+    C -->|blocked| Q
+    C --> D1
+    D1[Semantic Intent Drift\nSID\n~10ms] -->|score| E
+    D1 -->|blocked| Q
+    D1 --> D2
+    D2[Graph-Aware Cascade\nDetector GCPD\n~1ms] -->|score| E
+    D2 -->|blocked| Q
+    E{Weighted Ensemble\nScore}
+    E -->|score >= 0.50| Q([QUARANTINE\nAudit Log])
+    E -->|score < 0.50| P([PASS to\nNext Agent])
+
+    style A fill:#4a90d9,color:#fff,stroke:#2c5f8a
+    style B fill:#f5a623,color:#fff,stroke:#c47d0e
+    style C fill:#7b68ee,color:#fff,stroke:#4a3fa0
+    style D1 fill:#50c878,color:#fff,stroke:#2e8b57
+    style D2 fill:#20b2aa,color:#fff,stroke:#008080
+    style E fill:#ff6b6b,color:#fff,stroke:#cc0000
+    style Q fill:#cc0000,color:#fff,stroke:#8b0000
+    style P fill:#228b22,color:#fff,stroke:#006400

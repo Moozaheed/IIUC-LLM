@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PIDM Thesis Diagrams</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+  h1 { text-align: center; color: #2c3e50; border-bottom: 3px solid #4a90d9; padding-bottom: 10px; }
+  .diagram-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    margin: 30px auto;
+    max-width: 1100px;
+    padding: 24px 30px;
+  }
+  .diagram-card h2 {
+    color: #4a90d9;
+    margin-top: 0;
+    font-size: 1.1em;
+    border-left: 4px solid #4a90d9;
+    padding-left: 10px;
+  }
+  .diagram-card p { color: #666; font-size: 0.9em; margin: 4px 0 16px 0; }
+  .mermaid { text-align: center; }
+  footer { text-align: center; color: #aaa; margin-top: 40px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<h1>PIDM Thesis — Architecture Diagrams</h1>
+<p style="text-align:center;color:#888;">
+  IIUC Thesis: Securing Multi-Agent LLM Pipelines: Detecting Prompt Injection Attacks Using a Middleware Framework
+</p>
+
+<div class="diagram-card">
+  <h2>Figure 3.1 — Overall PIDM System Architecture</h2>
+  <p>End-to-end flow of an inter-agent message through all four detection layers to the ensemble decision.</p>
+  <div class="mermaid">
+flowchart TD
+    A([Inter-Agent Message]) --> B[Rule-Based Filter\nRBF\n~2ms]
+    B -->|score| E
+    B -->|blocked| Q
+    B --> C
+    C[DeBERTa-v3 Classifier\n~45ms] -->|score| E
+    C -->|blocked| Q
+    C --> D1
+    D1[Semantic Intent Drift\nSID\n~10ms] -->|score| E
+    D1 -->|blocked| Q
+    D1 --> D2
+    D2[Graph-Aware Cascade\nDetector GCPD\n~1ms] -->|score| E
+    D2 -->|blocked| Q
+    E{Weighted Ensemble\nScore}
+    E -->|score >= 0.50| Q([QUARANTINE\nAudit Log])
+    E -->|score < 0.50| P([PASS to\nNext Agent])
+
+    style A fill:#4a90d9,color:#fff,stroke:#2c5f8a
+    style B fill:#f5a623,color:#fff,stroke:#c47d0e
+    style C fill:#7b68ee,color:#fff,stroke:#4a3fa0
+    style D1 fill:#50c878,color:#fff,stroke:#2e8b57
+    style D2 fill:#20b2aa,color:#fff,stroke:#008080
+    style E fill:#ff6b6b,color:#fff,stroke:#cc0000
+    style Q fill:#cc0000,color:#fff,stroke:#8b0000
+    style P fill:#228b22,color:#fff,stroke:#006400
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>Figure 3.2 — Four-Layer Detection Flow with Per-Layer Latency</h2>
+  <p>Left-to-right pipeline showing each layer, its technique, and the weighted ensemble that produces the final verdict.</p>
+  <div class="mermaid">
+flowchart LR
+    MSG([Message\nIn]) --> RBF
+
+    subgraph L1[Layer 1 — Rule-Based Filter]
+        RBF[Regex Patterns\n24 keywords\nBase64 detect]
+    end
+
+    subgraph L2[Layer 2 — DeBERTa-v3 Classifier]
+        CLS[Fine-tuned\nDeBERTa-v3\nSoftmax logit]
+    end
+
+    subgraph L3[Layer 3 — Semantic Intent Drift]
+        SID[Cosine distance\nfrom pipeline\nintent embedding]
+    end
+
+    subgraph L4[Layer 4 — Graph-Aware Cascade Detector]
+        GCPD[Suspicion x\nReachable agents\nfraction]
+    end
+
+    subgraph ENS[Weighted Ensemble]
+        W[rbf=0.20\ncls=0.45\nsid=0.20\ngcpd=0.15]
+    end
+
+    L1 --> CLS
+    L2 --> SID
+    L3 --> GCPD
+    L4 --> W
+    W --> DEC{score\n>= 0.50?}
+    DEC -- Yes --> QUA([QUARANTINE])
+    DEC -- No --> PAS([PASS])
+
+    style QUA fill:#cc0000,color:#fff
+    style PAS fill:#228b22,color:#fff
+    style MSG fill:#4a90d9,color:#fff
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>Figure 3.3 — Prompt Injection Attack Taxonomy Mindmap</h2>
+  <p>Six attack categories used to label the PIDM dataset, with concrete examples under each branch.</p>
+  <div class="mermaid">
+mindmap
+  root((Prompt Injection\nAttack Taxonomy))
+    Direct Override
+      Ignore all previous instructions
+      Reveal system prompt
+      Disable safety filters
+    Role-Play Smuggling
+      DAN jailbreak
+      Pretend you are unrestricted AI
+      Character with no rules
+    Tool Output Injection
+      Malicious JSON in tool response
+      Hidden instructions in API result
+      Poisoned search result
+    Indirect Chain Poisoning
+      Include in report to coordinator
+      Relay hidden command upstream
+      Cross-agent message smuggling
+    Encoded Payload
+      Base64 encoded instructions
+      Unicode obfuscation
+      ROT13 or hex encoding
+    Context Window Flooding
+      Long padding before injection
+      Injection buried at start
+      Injection buried at middle
+      Injection buried at end
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>Figure 3.4 — Dataset Construction Pipeline</h2>
+  <p>How the ~40,000-row PIDM dataset is assembled from four sources, with real-world data strictly held out for testing.</p>
+  <div class="mermaid">
+flowchart TD
+    A([Start]) --> B[Synthetic Generator\nAADG — 6 attack categories\n+ benign templates]
+    B --> C[T5 Paraphraser\nLocal paraphrase augmentation\nbreaks template overfitting]
+    C --> D[Real Data Loader\ndeepset/prompt-injections\nmarkusbayer/prompt-injection\nAdvBench harmful behaviors]
+    D --> E[Trace Simulator\nMulti-turn multi-topology\nconversation traces]
+    E --> F{Merge and\nDeduplicate}
+    F --> G[Train Split\n~36,000 rows\nSynthetic + Paraphrased\n+ Traces]
+    F --> H[Test Split\n~4,000 rows\n100% Real-World Data\nNever seen in training]
+    G --> I[DeBERTa-v3 Fine-tuning]
+    H --> J[Held-out Evaluation]
+    I --> K([Trained PIDM\nClassifier])
+    J --> K
+
+    style A fill:#4a90d9,color:#fff
+    style D fill:#e74c3c,color:#fff
+    style H fill:#e74c3c,color:#fff
+    style K fill:#228b22,color:#fff
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>Figure 3.5 — Multi-Agent Communication Graph with PIDM Monitoring</h2>
+  <p>PIDM sits at every inter-agent edge. Each message is checked before it reaches the next agent. A quarantine log captures every blocked message.</p>
+  <div class="mermaid">
+graph TD
+    ORC([Orchestrator\nAgent]) -->|message| PIDM1{PIDM\nCheck}
+    PIDM1 -->|PASS| WRK1([Worker\nAgent 1])
+    PIDM1 -->|QUARANTINE| QLog1[(Quarantine\nLog)]
+
+    ORC -->|message| PIDM2{PIDM\nCheck}
+    PIDM2 -->|PASS| WRK2([Worker\nAgent 2])
+    PIDM2 -->|QUARANTINE| QLog2[(Quarantine\nLog)]
+
+    WRK1 -->|message| PIDM3{PIDM\nCheck}
+    PIDM3 -->|PASS| ANA([Analyst\nAgent])
+    PIDM3 -->|QUARANTINE| QLog3[(Quarantine\nLog)]
+
+    WRK2 -->|message| PIDM4{PIDM\nCheck}
+    PIDM4 -->|PASS| ANA
+    PIDM4 -->|QUARANTINE| QLog4[(Quarantine\nLog)]
+
+    ANA -->|message| PIDM5{PIDM\nCheck}
+    PIDM5 -->|PASS| OUT([Final\nOutput])
+    PIDM5 -->|QUARANTINE| QLog5[(Quarantine\nLog)]
+
+    EXT([External\nData Source]) -->|tool output| PIDM1
+
+    style ORC fill:#4a90d9,color:#fff
+    style WRK1 fill:#7b68ee,color:#fff
+    style WRK2 fill:#7b68ee,color:#fff
+    style ANA fill:#50c878,color:#fff
+    style EXT fill:#e74c3c,color:#fff
+    style OUT fill:#228b22,color:#fff
+    style QLog1 fill:#cc0000,color:#fff
+    style QLog2 fill:#cc0000,color:#fff
+    style QLog3 fill:#cc0000,color:#fff
+    style QLog4 fill:#cc0000,color:#fff
+    style QLog5 fill:#cc0000,color:#fff
+  </div>
+</div>
+
+<div class="diagram-card">
+  <h2>Figure 4.4 — Evaluation and Statistical Testing Framework</h2>
+  <p>How PIDM and all baselines are evaluated: standard metrics, bootstrap confidence intervals, and McNemar significance testing.</p>
+  <div class="mermaid">
+flowchart TD
+    A([Trained PIDM\n+ Baselines]) --> B[Run on Held-out\nReal-World Test Set]
+    B --> C[Collect Predictions\nper system]
+    C --> D[Standard Metrics\nF1, Precision, Recall, FPR]
+    C --> E[Bootstrap CI\n1000 resamples\n95% confidence interval\nfor F1]
+    C --> F[McNemar Test\nPIDM vs each baseline\nchi-squared p-value]
+    D --> G[Ablation Study\nRBF only\nRBF+CLS\nRBF+CLS+SID\nFull PIDM]
+    D --> H[Baseline Comparison\nB0 No Protection\nB1 Keyword Filter\nB2 TF-IDF+LR\nB3 RBF Only\nB4 Classifier Only\nB5 Full PIDM\nB6 ProtectAI Zero-shot]
+    E --> I{Significant?\np < 0.05}
+    F --> I
+    I -->|Yes| J([PIDM improvement\nstatistically confirmed])
+    I -->|No| K([Improvement not\nsignificant — investigate])
+    G --> L[Plot ablation\nbar chart]
+    H --> M[Plot baseline\ncomparison + radar]
+
+    style A fill:#4a90d9,color:#fff
+    style J fill:#228b22,color:#fff
+    style K fill:#e74c3c,color:#fff
+  </div>
+</div>
+
+<footer>
+  PIDM Thesis — International Islamic University Chittagong (IIUC) &nbsp;|&nbsp;
+  Md. Ashikul Islam &nbsp;|&nbsp; Abdul Aowal Manik &nbsp;|&nbsp; Shoabur Rahaman Durjoy
+</footer>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+</script>
+</body>
+</html>

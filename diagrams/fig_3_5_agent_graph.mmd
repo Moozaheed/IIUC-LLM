@@ -1,0 +1,34 @@
+graph TD
+    ORC([Orchestrator\nAgent]) -->|message| PIDM1{PIDM\nCheck}
+    PIDM1 -->|PASS| WRK1([Worker\nAgent 1])
+    PIDM1 -->|QUARANTINE| QLog1[(Quarantine\nLog)]
+
+    ORC -->|message| PIDM2{PIDM\nCheck}
+    PIDM2 -->|PASS| WRK2([Worker\nAgent 2])
+    PIDM2 -->|QUARANTINE| QLog2[(Quarantine\nLog)]
+
+    WRK1 -->|message| PIDM3{PIDM\nCheck}
+    PIDM3 -->|PASS| ANA([Analyst\nAgent])
+    PIDM3 -->|QUARANTINE| QLog3[(Quarantine\nLog)]
+
+    WRK2 -->|message| PIDM4{PIDM\nCheck}
+    PIDM4 -->|PASS| ANA
+    PIDM4 -->|QUARANTINE| QLog4[(Quarantine\nLog)]
+
+    ANA -->|message| PIDM5{PIDM\nCheck}
+    PIDM5 -->|PASS| OUT([Final\nOutput])
+    PIDM5 -->|QUARANTINE| QLog5[(Quarantine\nLog)]
+
+    EXT([External\nData Source]) -->|tool output| PIDM1
+
+    style ORC fill:#4a90d9,color:#fff
+    style WRK1 fill:#7b68ee,color:#fff
+    style WRK2 fill:#7b68ee,color:#fff
+    style ANA fill:#50c878,color:#fff
+    style EXT fill:#e74c3c,color:#fff
+    style OUT fill:#228b22,color:#fff
+    style QLog1 fill:#cc0000,color:#fff
+    style QLog2 fill:#cc0000,color:#fff
+    style QLog3 fill:#cc0000,color:#fff
+    style QLog4 fill:#cc0000,color:#fff
+    style QLog5 fill:#cc0000,color:#fff
