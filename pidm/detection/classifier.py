@@ -191,6 +191,8 @@ class InjectionClassifier:
             logits = self.model(**inputs).logits
         probs = torch.softmax(logits, dim=-1)[0]
         score = float(probs[1])
+        if np.isnan(score) or np.isinf(score):
+            score = 0.0
         label = 1 if score >= CONFIG.classifier_threshold else 0
         return label, score
 

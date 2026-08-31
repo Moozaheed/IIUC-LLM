@@ -58,7 +58,14 @@ class PIDMEvaluator:
         cm  = confusion_matrix(y_true, y_pred)
         tn, fp, fn, tp = cm.ravel() if cm.shape == (2, 2) else (0, 0, 0, 0)
         fpr = fp / (fp + tn) if (fp + tn) > 0 else 0.0
-        auc = roc_auc_score(y_true, y_prob) if y_prob is not None and len(set(y_true)) > 1 else 0.0
+        if y_prob is not None and len(set(y_true)) > 1:
+            y_prob_clean = np.nan_to_num(np.array(y_prob, dtype=float), nan=0.0, posinf=1.0, neginf=0.0)
+            try:
+                auc = roc_auc_score(y_true, y_prob_clean)
+            except ValueError:
+                auc = 0.0
+        else:
+            auc = 0.0
         return {
             "Precision": round(p, 4), "Recall": round(r, 4),
             "F1":        round(f1, 4), "Accuracy": round(acc, 4),
@@ -229,8 +236,12 @@ class PIDMEvaluator:
         ]:
             if len(set(labels)) < 2:
                 continue
-            fpr, tpr, _ = roc_curve(labels, scores)
-            auc = roc_auc_score(labels, scores)
+            scores_clean = np.nan_to_num(np.array(scores, dtype=float), nan=0.0, posinf=1.0, neginf=0.0)
+            try:
+                fpr, tpr, _ = roc_curve(labels, scores_clean)
+                auc = roc_auc_score(labels, scores_clean)
+            except ValueError:
+                continue
             ax.plot(fpr, tpr, label=f"{name} (AUC={auc:.3f})", linewidth=2)
         ax.plot([0, 1], [0, 1], "k--", linewidth=1)
         ax.set_xlabel("False Positive Rate"); ax.set_ylabel("True Positive Rate")
