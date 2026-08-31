@@ -26,6 +26,13 @@ class GraphAwareCascadeDetector:
         self.G               = nx.DiGraph()
         self._suspicious_log = defaultdict(list)   # agent -> list of suspicion scores
 
+    def reset_state(self) -> None:
+        """Reset all accumulated graph state. Must be called before test-set evaluation
+        to prevent information leakage from training/prior messages into test inference."""
+        self.G               = nx.DiGraph()
+        self._suspicious_log = defaultdict(list)
+        logger.info("GCPD state reset — graph and suspicion history cleared.")
+
     def register_message(self, from_agent: str, to_agent: str,
                           suspicion_score: float = 0.0) -> None:
         if not self.G.has_node(from_agent):

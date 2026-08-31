@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Dict
+from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +13,7 @@ import seaborn as sns
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
+    f1_score,
     precision_recall_fscore_support,
     roc_auc_score,
     roc_curve,
@@ -65,9 +66,85 @@ class PIDMEvaluator:
             "TP": int(tp), "FP": int(fp), "FN": int(fn), "TN": int(tn),
         }
 
+    @staticmethod
+    def bootstrap_ci(
+        y_true: List[int],
+        y_pred: List[int],
+        n_bootstrap: int = 1000,
+        confidence: float = 0.95,
+    ) -> Tuple[float, float, float]:
+        """Return (point_estimate, lower_bound, upper_bound) for F1 via bootstrap."""
+        rng = np.random.default_rng(42)
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
+        point  = f1_score(y_true, y_pred, zero_division=0)
+        scores = []
+        for _ in range(n_bootstrap):
+            idx = rng.integers(0, len(y_true), size=len(y_true))
+            scores.append(f1_score(y_true[idx], y_pred[idx], zero_division=0))
+        alpha = (1 - confidence) / 2
+        lo, hi = np.quantile(scores, [alpha, 1 - alpha])
+        return round(float(point), 4), round(float(lo), 4), round(float(hi), 4)
+
+    @staticmethod
+    def mcnemar_test(
+        y_true: List[int],
+        pred_a: List[int],
+        pred_b: List[int],
+        name_a: str = "A",
+        name_b: str = "B",
+    ) -> Dict:
+        """McNemar's test: is the difference between two classifiers significant?
+        Returns chi2 statistic, p-value, and whether result is significant at p<0.05."""
+        y_true = np.array(y_true)
+        pred_a = np.array(pred_a)
+        pred_b = np.array(pred_b)
+        # Contingency: b = A right & B wrong, c = A wrong & B right
+        b = int(np.sum((pred_a == y_true) & (pred_b != y_true)))
+        c = int(np.sum((pred_a != y_true) & (pred_b == y_true)))
+        # McNemar's chi-squared with continuity correction
+        if (b + c) == 0:
+            chi2_stat, p_value = 0.0, 1.0
+        else:
+            chi2_stat = (abs(b - c) - 1) ** 2 / (b + c)
+            from scipy.stats import chi2
+            p_value = 1 - chi2.cdf(chi2_stat, df=1)
+        return {
+            "comparison": f"{name_a} vs {name_b}",
+            "b": b, "c": c,
+            "chi2": round(chi2_stat, 4),
+            "p_value": round(p_value, 4),
+            "significant_p05": bool(p_value < 0.05),
+        }
+
+    def run_statistical_analysis(self, baseline_preds: Dict[str, List[int]]) -> None:
+        """Run McNemar's test (PIDM vs each baseline) and bootstrap CI for PIDM F1."""
+        logger.info("Running statistical significance tests ...")
+        print("\n" + "=" * 70)
+        print("  STATISTICAL ANALYSIS")
+        print("=" * 70)
+
+        # Bootstrap CI for Full PIDM F1
+        point, lo, hi = self.bootstrap_ci(self._true, self._pidm_p)
+        print(f"\n  Full PIDM — F1 Bootstrap 95% CI: {point:.4f}  [{lo:.4f}, {hi:.4f}]")
+
+        # McNemar's test: PIDM vs each baseline
+        print("\n  McNemar's Test (PIDM vs Baseline):")
+        print(f"  {'Comparison':<35} {'chi2':>8} {'p-value':>10} {'Significant':>12}")
+        print("  " + "-" * 68)
+        for name, preds in baseline_preds.items():
+            res = self.mcnemar_test(self._true, self._pidm_p, preds, "PIDM", name)
+            sig = "YES (p<0.05)" if res["significant_p05"] else "no"
+            print(f"  {res['comparison']:<35} {res['chi2']:>8.4f} {res['p_value']:>10.4f} {sig:>12}")
+        print("=" * 70 + "\n")
+
     def run_full(self) -> Dict:
         logger.info("Running full evaluation ...")
         rbf_obj = RuleBasedFilter()
+
+        # Reset GCPD state before evaluation so test messages don't carry
+        # over suspicion history built during pipeline simulation or training.
+        self.pidm.gcpd.reset_state()
 
         rbf_labels, rbf_scores   = [], []
         sid_labels, sid_scores   = [], []

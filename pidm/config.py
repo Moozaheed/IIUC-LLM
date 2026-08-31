@@ -108,7 +108,16 @@ class PIDMConfig:
                 self.batch_size = 32
                 logger.info(f"GPU VRAM={vram:.1f}GB — using DeBERTa-v3-base, batch_size=32, fp16.")
 
-        logger.info(f"PIDMConfig ready | device={self.device} | model={self.classifier_model}")
+        # Log every resolved value explicitly so the methods section of the
+        # paper can be filled in directly from the run log — not inferred from code.
+        logger.info(
+            f"PIDMConfig RESOLVED | device={self.device} | model={self.classifier_model} | "
+            f"batch_size={self.batch_size} | grad_accum={self.gradient_accumulation_steps} | "
+            f"effective_batch={self.batch_size * self.gradient_accumulation_steps} | "
+            f"epochs={self.num_epochs} | lr={self.learning_rate} | "
+            f"fp16={'True' if self.device == 'cuda' else 'False'} | "
+            f"max_seq_len={self.max_length} | dataset_size={self.dataset_size}"
+        )
 
 
 CONFIG = PIDMConfig()

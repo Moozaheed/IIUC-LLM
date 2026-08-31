@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
+import random
+
 import numpy as np
 import pandas as pd
 import torch
@@ -134,6 +136,14 @@ class InjectionClassifier:
                         f"{sorted(dropped)} — skipping.")
 
         args = TrainingArguments(**filtered_args)
+
+        # Seed everything before Trainer init so model weights, dropout, and
+        # data shuffling inside the Trainer are all deterministic.
+        random.seed(42)
+        np.random.seed(42)
+        torch.manual_seed(42)
+        if CONFIG.device == "cuda":
+            torch.cuda.manual_seed_all(42)
 
         # `tokenizer` was renamed to `processing_class` in newer transformers.
         desired_trainer_kwargs = {

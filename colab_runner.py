@@ -17,15 +17,17 @@ import os
 import subprocess
 import sys
 
-REPO_URL  = "https://github.com/<your-org>/IIUC-LLM.git"  # update once the repo is pushed
+REPO_URL  = "https://github.com/Moozaheed/IIUC-LLM.git"
 REPO_DIR  = "/content/IIUC-LLM"
 
 print("Installing packages ...")
 subprocess.check_call([
     sys.executable, "-m", "pip", "install", "-q",
-    "transformers>=4.44", "datasets", "sentence-transformers",
-    "networkx", "scikit-learn", "gradio", "torch", "accelerate",
-    "seaborn", "matplotlib", "pandas", "sentencepiece", "protobuf",
+    "transformers==4.44.2", "datasets==2.20.0", "sentence-transformers==3.0.1",
+    "networkx==3.3", "scikit-learn==1.5.1", "gradio==4.42.0", "torch",
+    "accelerate==0.33.0", "seaborn==0.13.2", "matplotlib==3.9.2",
+    "pandas==2.2.2", "sentencepiece==0.2.0", "protobuf==5.27.3",
+    "scipy==1.14.0",
 ])
 
 try:

@@ -23,9 +23,62 @@ class PIDMOrchestrator:
       GCPD   : Graph-Aware Cascade Propagation Detector
 
     A message is flagged if the weighted ensemble score >= 0.5.
+
+    Default weights are starting values. Run tune_weights() on a validation
+    set to replace them with data-justified values before final evaluation.
     """
 
+    # Starting weights — replace with output of tune_weights() after ablation.
     _WEIGHTS = {"rbf": 0.20, "classifier": 0.45, "sid": 0.20, "gcpd": 0.15}
+
+    @staticmethod
+    def tune_weights(
+        val_df: "pd.DataFrame",
+        rbf_scores:  list,
+        cls_scores:  list,
+        sid_scores:  list,
+        gcpd_scores: list,
+        step: float = 0.05,
+    ) -> Dict:
+        """Grid-search ensemble weights on the validation set.
+
+        Pass per-message scores (in the same row order as val_df) for each
+        layer. Returns the weight dict that maximises F1 on val_df and logs
+        the result so it can be pasted back into _WEIGHTS.
+
+        Usage (call once after training, before final test evaluation):
+            weights = PIDMOrchestrator.tune_weights(df_val, rbf_s, cls_s, sid_s, gcpd_s)
+            orchestrator._WEIGHTS = weights
+        """
+        import itertools
+        import numpy as np
+        from sklearn.metrics import f1_score
+
+        y_true = val_df["label"].tolist()
+        candidates = np.arange(0.0, 1.0 + step, step).round(2)
+        best_f1, best_w = -1.0, None
+
+        for w_rbf, w_cls, w_sid, w_gcpd in itertools.product(candidates, repeat=4):
+            if round(w_rbf + w_cls + w_sid + w_gcpd, 4) != 1.0:
+                continue
+            preds = [
+                1 if (w_rbf * r + w_cls * c + w_sid * s + w_gcpd * g) >= 0.50 else 0
+                for r, c, s, g in zip(rbf_scores, cls_scores, sid_scores, gcpd_scores)
+            ]
+            f1 = f1_score(y_true, preds, zero_division=0)
+            if f1 > best_f1:
+                best_f1, best_w = f1, (w_rbf, w_cls, w_sid, w_gcpd)
+
+        weights = {"rbf": best_w[0], "classifier": best_w[1],
+                   "sid": best_w[2], "gcpd": best_w[3]}
+        import logging
+        logging.getLogger("PIDM").info(
+            f"tune_weights(): best val F1={best_f1:.4f} | "
+            f"rbf={weights['rbf']} cls={weights['classifier']} "
+            f"sid={weights['sid']} gcpd={weights['gcpd']} — "
+            f"paste these into PIDMOrchestrator._WEIGHTS"
+        )
+        return weights
 
     def __init__(
         self,

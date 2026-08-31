@@ -219,6 +219,9 @@ After running, all outputs are saved to `./pidm_output/`:
 3. Liu et al. (2024). *Prompt Injection Attacks and Defenses in LLM-Integrated Applications.* arXiv:2310.12815.
 4. Wu et al. (2023). *AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation.* arXiv:2308.08155.
 5. Yang et al. (2024). *Watch Out for Your Agents! Investigating Backdoor Threats to LLM-Based Agents.* arXiv:2402.11208.
+6. Zhan et al. (2024). *InjecAgent: Benchmarking Indirect Prompt Injections in Tool-Augmented Large Language Model Agents.* arXiv:2403.02691.
+7. Debenedetti et al. (2024). *AgentDojo: A Dynamic Environment to Evaluate Attacks and Defenses for LLM Agents.* arXiv:2406.13352.
+8. OWASP (2025). *OWASP Top 10 for Large Language Model Applications.* https://owasp.org/www-project-top-10-for-large-language-model-applications/
 
 ---
 
