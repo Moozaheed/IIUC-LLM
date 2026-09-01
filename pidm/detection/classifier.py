@@ -116,6 +116,8 @@ class InjectionClassifier:
             "per_device_eval_batch_size":   CONFIG.batch_size,
             "gradient_accumulation_steps":  CONFIG.gradient_accumulation_steps,
             "learning_rate":                CONFIG.learning_rate,
+            "adam_epsilon":                 1e-6,   # DeBERTa-v3 requires this; default 1e-8 causes grad explosion
+            "max_grad_norm":                1.0,
             "weight_decay":                 CONFIG.weight_decay,
             "warmup_steps":                 CONFIG.warmup_steps,
             "eval_strategy":                "epoch",
