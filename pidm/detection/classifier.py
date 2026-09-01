@@ -124,7 +124,8 @@ class InjectionClassifier:
             "evaluation_strategy":          "epoch",   # older transformers name; filtered below
             "save_strategy":                "epoch",
             "load_best_model_at_end":       True,
-            "metric_for_best_model":        "f1",
+            "metric_for_best_model":        "eval_loss",
+            "greater_is_better":            False,
             "logging_dir":                  f"{save_path}/logs",
             "logging_steps":                50,
             "report_to":                    "none",
@@ -159,7 +160,7 @@ class InjectionClassifier:
             "processing_class":  self.tokenizer,   # newer transformers name
             "data_collator":   DataCollatorWithPadding(self.tokenizer),
             "compute_metrics": compute_metrics,
-            "callbacks":       [EarlyStoppingCallback(early_stopping_patience=2)],
+            "callbacks":       [EarlyStoppingCallback(early_stopping_patience=3)],
         }
         trainer_accepted = set(inspect.signature(Trainer.__init__).parameters)
         trainer = Trainer(**{k: v for k, v in desired_trainer_kwargs.items() if k in trainer_accepted})
