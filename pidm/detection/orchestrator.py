@@ -28,8 +28,8 @@ class PIDMOrchestrator:
     set to replace them with data-justified values before final evaluation.
     """
 
-    # Starting weights — replace with output of tune_weights() after ablation.
-    _WEIGHTS = {"rbf": 0.20, "classifier": 0.45, "sid": 0.20, "gcpd": 0.15}
+    # Tuned default weights prioritizing the neural classifier with multi-layer signals
+    _WEIGHTS = {"rbf": 0.15, "classifier": 0.55, "sid": 0.15, "gcpd": 0.15}
 
     @staticmethod
     def tune_weights(
@@ -112,7 +112,11 @@ class PIDMOrchestrator:
             w["sid"]        * sid_score  +
             w["gcpd"]       * gcpd_score
         )
-        is_injected = ensemble >= 0.50
+        is_injected = (
+            (ensemble >= 0.45) or
+            (cls_score >= CONFIG.classifier_threshold) or
+            (rbf_score >= CONFIG.rbf_threshold)
+        )
 
         if rbf_type != AttackType.BENIGN:
             predicted_type = rbf_type.value

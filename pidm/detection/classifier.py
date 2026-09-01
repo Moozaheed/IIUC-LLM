@@ -170,6 +170,8 @@ class InjectionClassifier:
         metrics = trainer.evaluate()
         trainer.save_model(save_path)
         self.tokenizer.save_pretrained(save_path)
+        self.model.eval()
+        self.model.to(CONFIG.device)
         self._trained = True
         logger.info(f"Classifier saved -> {save_path}")
         return metrics
