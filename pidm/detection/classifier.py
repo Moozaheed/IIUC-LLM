@@ -39,18 +39,20 @@ class _TokenizedDataset(TorchDataset):
 
 def _mixed_precision_kwargs() -> dict:
     """
-    DeBERTa-v2/v3's disentangled-attention layers (custom XSoftmax /
-    StableDropout autograd functions) are known to break fp16 gradient
-    scaling ("Attempting to unscale FP16 gradients"). bf16 needs no
-    gradient scaler at all and Ampere+ GPUs (RTX 3070 included) support it
-    natively, so prefer bf16 on CUDA and only fall back to fp16 off-GPU
-    hardware that lacks it.
+    DeBERTa-v3's XSoftmax/StableDropout autograd ops produce NaN gradients
+    under FP16 gradient scaling on Turing-class GPUs (T4, V100, RTX 20xx).
+    BF16 avoids the scaler entirely and is safe; Ampere+ GPUs (RTX 30xx+,
+    A100) support it natively. When BF16 is unavailable (Turing / CPU),
+    fall back to FP32 — slower but always correct.
     """
     if CONFIG.device != "cuda":
         return {"fp16": False, "bf16": False}
     if torch.cuda.is_bf16_supported():
         return {"fp16": False, "bf16": True}
-    return {"fp16": True, "bf16": False}
+    # T4 / Turing: no BF16, FP16 kills DeBERTa gradients — use FP32.
+    logger.info("BF16 not supported on this GPU; training in FP32 to avoid "
+                "DeBERTa XSoftmax NaN overflow under FP16.")
+    return {"fp16": False, "bf16": False}
 
 
 def compute_metrics(eval_pred):
@@ -173,7 +175,10 @@ class InjectionClassifier:
     def load(self, path: str = None) -> None:
         path = path or CONFIG.model_save_path
         self.tokenizer = AutoTokenizer.from_pretrained(path)
-        self.model     = AutoModelForSequenceClassification.from_pretrained(path)
+        # Always load in FP32 for inference — DeBERTa attention overflows in FP16.
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            path, torch_dtype=torch.float32
+        )
         self.model.to(CONFIG.device)
         self.model.eval()
         self._trained = True
