@@ -33,7 +33,7 @@ class _TokenizedDataset(TorchDataset):
 
     def __getitem__(self, idx):
         item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
-        item["labels"] = torch.tensor(self.labels[idx])
+        item["labels"] = torch.tensor(int(self.labels[idx]), dtype=torch.long)
         return item
 
 
