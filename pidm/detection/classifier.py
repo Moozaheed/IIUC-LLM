@@ -171,7 +171,7 @@ class InjectionClassifier:
         trainer_accepted = set(inspect.signature(Trainer.__init__).parameters)
         trainer = Trainer(**{k: v for k, v in desired_trainer_kwargs.items() if k in trainer_accepted})
 
-        logger.info(f"Starting classifier training on {n_train:,} rows "
+        logger.info(f"Starting classifier training on {len(train_df):,} rows "
                     f"(batch={CONFIG.batch_size} x grad_accum={CONFIG.gradient_accumulation_steps}) ...")
         trainer.train()
         metrics = trainer.evaluate()
