@@ -39,8 +39,8 @@ class PIDMConfig:
 
     # Detection thresholds (tune via ablation)
     rbf_threshold:        float = 0.40
-    classifier_threshold: float = 0.65
-    sid_drift_threshold:  float = 0.60
+    classifier_threshold: float = 0.50
+    sid_drift_threshold:  float = 0.42
     gcpd_cascade_thresh:  float = 0.55
 
     # Dataset composition
@@ -49,7 +49,7 @@ class PIDMConfig:
     val_ratio:      float = 0.15
     test_ratio:     float = 0.15
     real_ratio:     float = 0.25       # used only when real_only_test is False
-    real_only_test: bool  = True       # hold out ALL real-world data as test-only
+    real_only_test: bool  = False      # blend real data into training; True = zero-shot domain-shift ablation
     use_paraphrase: bool  = True       # paraphrase-augment generated sentences
     real_source_max_rows: int = 4_000  # cap per-source rows so one huge HF dataset can't dominate
     real_test_max_size:   int = 6_000  # cap the final real-only test set for tractable eval

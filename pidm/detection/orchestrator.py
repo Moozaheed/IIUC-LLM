@@ -112,11 +112,7 @@ class PIDMOrchestrator:
             w["sid"]        * sid_score  +
             w["gcpd"]       * gcpd_score
         )
-        is_injected = (
-            (ensemble >= 0.45) or
-            (cls_score >= CONFIG.classifier_threshold) or
-            (rbf_score >= CONFIG.rbf_threshold)
-        )
+        is_injected = (ensemble >= 0.50) or (rbf_score >= CONFIG.rbf_threshold)
 
         if rbf_type != AttackType.BENIGN:
             predicted_type = rbf_type.value

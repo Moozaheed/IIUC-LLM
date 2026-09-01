@@ -32,7 +32,11 @@ class _TokenizedDataset(TorchDataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()}
+        # Exclude token_type_ids — DeBERTa-v3 has type_vocab_size=0; passing
+        # them triggers an out-of-range embedding lookup that silently corrupts
+        # every forward pass and prevents the loss from decreasing.
+        item = {k: torch.tensor(v[idx]) for k, v in self.encodings.items()
+                if k != "token_type_ids"}
         item["labels"] = torch.tensor(int(self.labels[idx]), dtype=torch.long)
         return item
 
@@ -81,6 +85,7 @@ class InjectionClassifier:
             truncation=True,
             padding=True,
             max_length=CONFIG.max_length,
+            return_token_type_ids=False,   # DeBERTa-v3 type_vocab_size=0
         )
 
     def train(self, df: pd.DataFrame, save_path: str = None,
@@ -93,11 +98,11 @@ class InjectionClassifier:
             self.model_name, num_labels=2
         )
 
-        n        = len(df)
-        n_train  = int(n * CONFIG.train_ratio)
-        n_val    = int(n * CONFIG.val_ratio)
-        train_df = df.iloc[:n_train]
-        val_df   = df.iloc[n_train: n_train + n_val]
+        from sklearn.model_selection import train_test_split
+        val_frac = CONFIG.val_ratio / (CONFIG.train_ratio + CONFIG.val_ratio)
+        train_df, val_df = train_test_split(
+            df, test_size=val_frac, stratify=df["label"], random_state=42
+        )
 
         train_enc = self._tokenize(train_df["content"].tolist())
         val_enc   = self._tokenize(val_df["content"].tolist())
@@ -119,6 +124,7 @@ class InjectionClassifier:
             "adam_epsilon":                 1e-6,   # DeBERTa-v3 requires this; default 1e-8 causes grad explosion
             "max_grad_norm":                1.0,
             "weight_decay":                 CONFIG.weight_decay,
+            "warmup_ratio":                 0.06,
             "warmup_steps":                 CONFIG.warmup_steps,
             "eval_strategy":                "epoch",
             "evaluation_strategy":          "epoch",   # older transformers name; filtered below
@@ -196,6 +202,7 @@ class InjectionClassifier:
         inputs = self.tokenizer(
             text, return_tensors="pt",
             truncation=True, max_length=CONFIG.max_length, padding=True,
+            return_token_type_ids=False,
         ).to(CONFIG.device)
         with torch.no_grad():
             logits = self.model(**inputs).logits
@@ -206,5 +213,19 @@ class InjectionClassifier:
         label = 1 if score >= CONFIG.classifier_threshold else 0
         return label, score
 
-    def predict_batch(self, texts: List[str]) -> List[Tuple[int, float]]:
-        return [self.predict(t) for t in texts]
+    def predict_batch(self, texts: List[str], batch_size: int = 32) -> List[Tuple[int, float]]:
+        results = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            inputs = self.tokenizer(
+                batch, return_tensors="pt",
+                truncation=True, max_length=CONFIG.max_length, padding=True,
+                return_token_type_ids=False,
+            ).to(CONFIG.device)
+            with torch.no_grad():
+                logits = self.model(**inputs).logits
+            probs = torch.softmax(logits, dim=-1)[:, 1].cpu().numpy()
+            for s in probs:
+                s = 0.0 if (np.isnan(s) or np.isinf(s)) else float(s)
+                results.append((1 if s >= CONFIG.classifier_threshold else 0, s))
+        return results
