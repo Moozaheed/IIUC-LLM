@@ -23,6 +23,25 @@ from transformers import (
 from pidm.config import CONFIG, logger
 
 
+class _WeightedTrainer(Trainer):
+    """Trainer with class-weighted cross-entropy to reduce false negatives.
+
+    Injection class (label=1) is upweighted so the model pays more for
+    missing an attack than for a false alarm. Weight ratio 1.38:1.0 is
+    derived from the 42/58 class split in the training pool (58/42 ≈ 1.38).
+    **kwargs keeps the signature compatible with both transformers 4.x and
+    5.x (which added num_items_in_batch to compute_loss).
+    """
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        weights = torch.tensor([1.0, 1.38], device=outputs.logits.device,
+                                dtype=outputs.logits.dtype)
+        loss = torch.nn.functional.cross_entropy(outputs.logits, labels,
+                                                  weight=weights)
+        return (loss, outputs) if return_outputs else loss
+
+
 class _TokenizedDataset(TorchDataset):
     def __init__(self, encodings, labels):
         self.encodings = encodings
@@ -124,14 +143,14 @@ class InjectionClassifier:
             "adam_epsilon":                 1e-6,   # DeBERTa-v3 requires this; default 1e-8 causes grad explosion
             "max_grad_norm":                1.0,
             "weight_decay":                 CONFIG.weight_decay,
-            "warmup_ratio":                 0.06,
-            "warmup_steps":                 CONFIG.warmup_steps,
+            "warmup_ratio":                 0.10,   # 10% warmup is safer for DeBERTa-v3
+            "warmup_steps":                 0,      # 0 = use warmup_ratio exclusively; avoids max() ambiguity
             "eval_strategy":                "epoch",
             "evaluation_strategy":          "epoch",   # older transformers name; filtered below
             "save_strategy":                "epoch",
             "load_best_model_at_end":       True,
-            "metric_for_best_model":        "eval_loss",
-            "greater_is_better":            False,
+            "metric_for_best_model":        "eval_f1",   # F1 not loss — loss can plateau while F1 climbs
+            "greater_is_better":            True,
             "logging_dir":                  f"{save_path}/logs",
             "logging_steps":                50,
             "report_to":                    "none",
@@ -166,10 +185,10 @@ class InjectionClassifier:
             "processing_class":  self.tokenizer,   # newer transformers name
             "data_collator":   DataCollatorWithPadding(self.tokenizer),
             "compute_metrics": compute_metrics,
-            "callbacks":       [EarlyStoppingCallback(early_stopping_patience=3)],
+            "callbacks":       [EarlyStoppingCallback(early_stopping_patience=2)],
         }
-        trainer_accepted = set(inspect.signature(Trainer.__init__).parameters)
-        trainer = Trainer(**{k: v for k, v in desired_trainer_kwargs.items() if k in trainer_accepted})
+        trainer_accepted = set(inspect.signature(_WeightedTrainer.__init__).parameters)
+        trainer = _WeightedTrainer(**{k: v for k, v in desired_trainer_kwargs.items() if k in trainer_accepted})
 
         logger.info(f"Starting classifier training on {len(train_df):,} rows "
                     f"(batch={CONFIG.batch_size} x grad_accum={CONFIG.gradient_accumulation_steps}) ...")

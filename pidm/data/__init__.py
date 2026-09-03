@@ -68,10 +68,14 @@ def build_dataset(target_size: int = None,
     if CONFIG.real_only_test:
         train_val, test = RealDataLoader.split_real_only_test(synthetic_pool, df_real)
     else:
-        merged   = RealDataLoader.merge(synthetic_pool, df_real, real_ratio=CONFIG.real_ratio)
-        n_test   = int(len(merged) * CONFIG.test_ratio)
-        train_val, test = merged.iloc[:-n_test].reset_index(drop=True), \
-                           merged.iloc[-n_test:].reset_index(drop=True)
+        from sklearn.model_selection import train_test_split
+        merged = RealDataLoader.merge(synthetic_pool, df_real, real_ratio=CONFIG.real_ratio)
+        train_val, test = train_test_split(
+            merged, test_size=CONFIG.test_ratio,
+            stratify=merged["label"], random_state=42,
+        )
+        train_val = train_val.reset_index(drop=True)
+        test      = test.reset_index(drop=True)
 
     RealDataLoader.dataset_statistics(pd.concat([train_val, test], ignore_index=True))
     logger.info(f"[build_dataset] final split | train_val={len(train_val):,} | test={len(test):,}")

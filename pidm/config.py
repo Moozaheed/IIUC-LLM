@@ -32,9 +32,9 @@ class PIDMConfig:
     num_epochs:                  int   = 5
     batch_size:                  int   = 16
     gradient_accumulation_steps: int   = 1
-    learning_rate:                float = 3.5e-5
+    learning_rate:                float = 2e-5
     max_length:                    int = 256
-    warmup_steps:                  int = 100
+    warmup_steps:                  int = 0
     weight_decay:                float = 0.01
 
     # Detection thresholds (tune via ablation)

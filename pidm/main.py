@@ -69,6 +69,31 @@ def main(
     evaluator.plot_per_attack_type(results)
     evaluator.plot_latency()
 
+    # -- Step 4b: Tune ensemble weights on a val slice (not test) --
+    print("\n[4b/8] Tuning ensemble weights on validation sample ...")
+    _tune_sample = df_train_val.sample(
+        n=min(1000, len(df_train_val)), random_state=42
+    ).reset_index(drop=True)
+    _rbf_s, _cls_s, _sid_s, _gcpd_s = [], [], [], []
+    for _, _row in _tune_sample.iterrows():
+        _, _rs, _ = pidm.rbf.predict(_row["content"])
+        _, _cs    = pidm.classifier.predict(_row["content"])
+        _, _ss    = pidm.sid.predict(_row["content"])
+        _base     = _rs * 0.5 + _cs * 0.5
+        pidm.gcpd.register_message(
+            str(_row.get("from_agent", "A")),
+            str(_row.get("to_agent", "B")),
+            _base,
+        )
+        _, _gs = pidm.gcpd.predict(str(_row.get("from_agent", "A")), _base)
+        _rbf_s.append(_rs); _cls_s.append(_cs)
+        _sid_s.append(_ss); _gcpd_s.append(_gs)
+    best_weights = PIDMOrchestrator.tune_weights(
+        _tune_sample, _rbf_s, _cls_s, _sid_s, _gcpd_s
+    )
+    pidm._WEIGHTS = best_weights
+    pidm.gcpd.reset_state()   # clear suspicion scores before real evaluation
+
     # -- Step 5: Baseline comparison --
     print("\n[5/8] Running baseline comparison ...")
     comparator  = BaselineComparator(train_df=df_train_val)

@@ -27,7 +27,8 @@ import sys
 # ── Configuration ────────────────────────────────────────────────────────────
 # If you push the repo to GitHub, set this URL. Otherwise leave as None and
 # upload the repo as a Kaggle dataset instead.
-GITHUB_REPO = "https://github.com/Moozaheed/IIUC-LLM.git"
+GITHUB_REPO   = "https://github.com/Moozaheed/IIUC-LLM.git"
+GITHUB_BRANCH = "feedback-from-teacher"   # branch that contains the latest fixes
 
 # Kaggle's fixed paths
 KAGGLE_WORKING = "/kaggle/working"
@@ -84,15 +85,25 @@ def _find_repo_root() -> str:
                 print(f"Found repo in Kaggle dataset: {candidate}")
                 return candidate
 
-    # Clone from GitHub
+    # Clone from GitHub (fallback when no dataset uploaded)
     if GITHUB_REPO:
         clone_dir = os.path.join(KAGGLE_WORKING, "IIUC-LLM")
         if not os.path.isdir(clone_dir):
-            print(f"Cloning {GITHUB_REPO} ...")
-            subprocess.check_call(["git", "clone", GITHUB_REPO, clone_dir])
-        else:
+            print(f"Cloning {GITHUB_REPO} (branch: {GITHUB_BRANCH}) ...")
+            subprocess.check_call([
+                "git", "clone",
+                "--branch", GITHUB_BRANCH,
+                "--depth", "1",
+                GITHUB_REPO, clone_dir,
+            ])
+        elif os.path.isdir(os.path.join(clone_dir, ".git")):
             print("Repo already cloned — pulling latest ...")
-            subprocess.check_call(["git", "-C", clone_dir, "pull"])
+            try:
+                subprocess.check_call(["git", "-C", clone_dir, "pull"])
+            except Exception as e:
+                print(f"Git pull skipped: {e}")
+        else:
+            print(f"Using unpacked repo in {clone_dir}")
         return clone_dir
 
     raise RuntimeError(

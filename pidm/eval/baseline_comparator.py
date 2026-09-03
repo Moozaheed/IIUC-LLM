@@ -159,11 +159,10 @@ class BaselineComparator:
             rbf_preds.append(lbl); rbf_probs.append(sc)
         results["B3: RBF Only"] = self._metrics(y_true, rbf_preds, rbf_probs)
 
-        logger.info("  Running Classifier-only baseline ...")
-        cls_preds, cls_probs = [], []
-        for t in texts:
-            lbl, sc = pidm.classifier.predict(t)
-            cls_preds.append(lbl); cls_probs.append(sc)
+        logger.info("  Running Classifier-only baseline (batched) ...")
+        pairs = pidm.classifier.predict_batch(texts, batch_size=64)
+        cls_preds = [p[0] for p in pairs]
+        cls_probs = [p[1] for p in pairs]
         results["B4: Classifier Only"] = self._metrics(y_true, cls_preds, cls_probs)
 
         logger.info("  Running Full PIDM ...")
