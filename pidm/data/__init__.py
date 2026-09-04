@@ -4,6 +4,7 @@ train/test pools.
 """
 from __future__ import annotations
 
+import os
 from typing import Tuple
 
 import pandas as pd
