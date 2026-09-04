@@ -38,6 +38,21 @@ def build_dataset(target_size: int = None,
     target_size = target_size or CONFIG.dataset_size
     use_paraphrase = CONFIG.use_paraphrase if use_paraphrase is None else use_paraphrase
 
+    # Fast path: If pre-generated dataset already exists, load directly to skip hours of paraphrasing
+    if CONFIG.dataset_path and os.path.isfile(CONFIG.dataset_path) and os.path.getsize(CONFIG.dataset_path) > 1000:
+        logger.info(f"[build_dataset] Found pre-generated dataset at {CONFIG.dataset_path} — loading directly!")
+        merged = pd.read_csv(CONFIG.dataset_path)
+        from sklearn.model_selection import train_test_split
+        train_val, test = train_test_split(
+            merged, test_size=CONFIG.test_ratio,
+            stratify=merged["label"], random_state=42,
+        )
+        train_val = train_val.reset_index(drop=True)
+        test      = test.reset_index(drop=True)
+        RealDataLoader.dataset_statistics(merged)
+        logger.info(f"[build_dataset] pre-generated split | train_val={len(train_val):,} | test={len(test):,}")
+        return train_val, test
+
     template_n = int(target_size * 0.65)
     base_n     = max(1, template_n // (1 + (CONFIG.paraphrase_variants_per_sentence if use_paraphrase else 0)))
 
