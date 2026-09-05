@@ -149,8 +149,9 @@ def main() -> None:
     import torch
     vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3) if torch.cuda.is_available() else 0
     if vram_gb >= 14:
-        CONFIG.batch_size = 32
-        print(f"Kaggle GPU detected ({vram_gb:.1f}GB) — using batch_size=32\n")
+        CONFIG.batch_size = 16
+        CONFIG.gradient_accumulation_steps = 2
+        print(f"Kaggle GPU detected ({vram_gb:.1f}GB) — using batch_size=16, grad_accum=2 for FP32 stability\n")
 
     from pidm.main import main as pidm_main
 
