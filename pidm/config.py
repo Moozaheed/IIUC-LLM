@@ -105,8 +105,12 @@ class PIDMConfig:
                 )
             else:
                 self.classifier_model = "microsoft/deberta-v3-base"
-                self.batch_size = 32
-                logger.info(f"GPU VRAM={vram:.1f}GB — using DeBERTa-v3-base, batch_size=32, fp16.")
+                self.batch_size = 16
+                self.gradient_accumulation_steps = 2
+                logger.info(
+                    f"GPU VRAM={vram:.1f}GB — using DeBERTa-v3-base, "
+                    f"batch_size=16, grad_accum=2 (effective 32), fp32."
+                )
 
         # Log every resolved value explicitly so the methods section of the
         # paper can be filled in directly from the run log — not inferred from code.
