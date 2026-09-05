@@ -41,6 +41,23 @@ class _TokenizedDataset(TorchDataset):
         return item
 
 
+class _DebertaCollator:
+    """Dynamic padding collator that guarantees token_type_ids is stripped.
+
+    DeBERTa-v3 has type_vocab_size=0. Standard HuggingFace pad() can re-attach
+    token_type_ids, which corrupts the embedding forward pass.
+    """
+    def __init__(self, tokenizer):
+        self._collator = DataCollatorWithPadding(tokenizer)
+
+    def __call__(self, features):
+        batch = self._collator(features)
+        batch.pop("token_type_ids", None)
+        if "labels" in batch and batch["labels"].dtype != torch.long:
+            batch["labels"] = batch["labels"].long()
+        return batch
+
+
 def _mixed_precision_kwargs() -> dict:
     """
     DeBERTa-v3's XSoftmax/StableDropout autograd ops produce NaN gradients
@@ -95,7 +112,10 @@ class InjectionClassifier:
         logger.info(f"Loading tokenizer: {self.model_name}")
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model     = AutoModelForSequenceClassification.from_pretrained(
-            self.model_name, num_labels=2
+            self.model_name,
+            num_labels=2,
+            problem_type="single_label_classification",
+            torch_dtype=torch.float32,
         )
 
         from sklearn.model_selection import train_test_split
@@ -164,7 +184,7 @@ class InjectionClassifier:
             "eval_dataset":    val_ds,
             "tokenizer":         self.tokenizer,   # older transformers name
             "processing_class":  self.tokenizer,   # newer transformers name
-            "data_collator":   DataCollatorWithPadding(self.tokenizer),
+            "data_collator":   _DebertaCollator(self.tokenizer),
             "compute_metrics": compute_metrics,
             "callbacks":       [EarlyStoppingCallback(early_stopping_patience=3)],
         }
@@ -203,7 +223,8 @@ class InjectionClassifier:
             text, return_tensors="pt",
             truncation=True, max_length=CONFIG.max_length, padding=True,
             return_token_type_ids=False,
-        ).to(CONFIG.device)
+        )
+        inputs = {k: v.to(CONFIG.device) for k, v in inputs.items() if k != "token_type_ids"}
         with torch.no_grad():
             logits = self.model(**inputs).logits
         probs = torch.softmax(logits, dim=-1)[0]
@@ -221,7 +242,8 @@ class InjectionClassifier:
                 batch, return_tensors="pt",
                 truncation=True, max_length=CONFIG.max_length, padding=True,
                 return_token_type_ids=False,
-            ).to(CONFIG.device)
+            )
+            inputs = {k: v.to(CONFIG.device) for k, v in inputs.items() if k != "token_type_ids"}
             with torch.no_grad():
                 logits = self.model(**inputs).logits
             probs = torch.softmax(logits, dim=-1)[:, 1].cpu().numpy()

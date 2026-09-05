@@ -29,10 +29,10 @@ class PIDMConfig:
     paraphrase_model: str = "humarin/chatgpt_paraphraser_on_T5_base"
 
     # Training hyper-parameters (tuned per-device in __post_init__)
-    num_epochs:                  int   = 5
+    num_epochs:                  int   = 3
     batch_size:                  int   = 16
     gradient_accumulation_steps: int   = 1
-    learning_rate:                float = 2e-5
+    learning_rate:                float = 3e-5
     max_length:                    int = 256
     warmup_steps:                  int = 0
     weight_decay:                float = 0.01

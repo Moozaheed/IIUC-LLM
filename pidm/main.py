@@ -58,19 +58,8 @@ def main(
     quarantine = QuarantineEngine()
     pidm       = PIDMOrchestrator(classifier, sid, gcpd, quarantine)
 
-    # -- Step 4: Ablation evaluation --
-    print("\n[4/8] Running PIDM ablation evaluation ...")
-    evaluator = PIDMEvaluator(pidm, df_test)
-    results   = evaluator.run_full()
-    evaluator.print_report(results)
-    evaluator.plot_confusion_matrix()
-    evaluator.plot_roc()
-    evaluator.plot_ablation(results)
-    evaluator.plot_per_attack_type(results)
-    evaluator.plot_latency()
-
-    # -- Step 4b: Tune ensemble weights on a val slice (not test) --
-    print("\n[4b/8] Tuning ensemble weights on validation sample ...")
+    # -- Step 3b: Tune ensemble weights on a val slice (not test) --
+    print("\n[3b/8] Tuning ensemble weights on validation sample ...")
     _tune_sample = df_train_val.sample(
         n=min(1000, len(df_train_val)), random_state=42
     ).reset_index(drop=True)
@@ -93,6 +82,17 @@ def main(
     )
     pidm._WEIGHTS = best_weights
     pidm.gcpd.reset_state()   # clear suspicion scores before real evaluation
+
+    # -- Step 4: Ablation evaluation --
+    print("\n[4/8] Running PIDM ablation evaluation ...")
+    evaluator = PIDMEvaluator(pidm, df_test)
+    results   = evaluator.run_full()
+    evaluator.print_report(results)
+    evaluator.plot_confusion_matrix()
+    evaluator.plot_roc()
+    evaluator.plot_ablation(results)
+    evaluator.plot_per_attack_type(results)
+    evaluator.plot_latency()
 
     # -- Step 5: Baseline comparison --
     print("\n[5/8] Running baseline comparison ...")
